@@ -61,11 +61,20 @@ async def create_task(background_tasks: BackgroundTasks, payload: Dict[str, Any]
         task_id: UUID = uuid4()
         await create_or_update_task(task_id=str(task_id), task_name=task_name, parameters=parameters,
                                     client_address=client_address)
-        background_tasks.add_task(execute_task, task_id=str(task_id), task_name=task_name, parameters=parameters)
+        background_tasks.add_task(_execute_task_and_update_result, task_id=str(task_id), task_name=task_name,
+                                  parameters=parameters, client_address=None)
         return {"task_id": str(task_id)}
     except Exception as e:
         logging.error(f"Failed to create task: {e}")
         raise HTTPException(status_code=500, detail="Task creation failed")
+
+
+async def _execute_task_and_update_result(task_id: str, task_name: str, parameters: Dict[str, Any],
+                                          client_address: str = None):
+    result = await execute_task(task_id=task_id, task_name=task_name, parameters=parameters)
+    # Once the task is done, update the task result
+    await create_or_update_task(task_id=task_id, task_name=task_name, parameters=parameters,
+                                client_address=client_address, result=result, state=DONE)
 
 
 class TaskResultResponse(BaseModel):
@@ -73,6 +82,7 @@ class TaskResultResponse(BaseModel):
     task_name: str
     parameters: dict
     result: str = {}
+    state: str
     timestamp: datetime
 
 
