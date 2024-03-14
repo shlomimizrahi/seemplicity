@@ -1,40 +1,39 @@
 """Main module to run the FastAPI application and handle task requests."""
 
 import logging
-from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Dict, Any
-
-from typing_extensions import TypedDict
 from uuid import uuid4, UUID
 
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import BackgroundTasks
+from fastapi import FastAPI
 from fastapi import HTTPException
+from pydantic import BaseModel
 from tortoise import Tortoise
 
 from models import TaskResult
 from task_manager import execute_task
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 app = FastAPI()
 
 
-@asynccontextmanager
-async def lifespan():
-    """Initializes Tortoise ORM at the application startup.
-      Closes Tortoise ORM connections at the application shutdown."""
+@app.on_event("startup")
+async def startup() -> None:
     try:
         await Tortoise.init(db_url='sqlite://db.sqlite3', modules={'models': ['models']})
         await Tortoise.generate_schemas()
+        logging.info("ORM initialized successfully.")
     except Exception as e:
         logging.error(f"Failed to initialize ORM: {e}")
-        # We might want to stop the app from running if critical DB connection can't be established
-        raise HTTPException(status_code=500, detail="Could not initialize database connection")
-    yield
 
+
+@app.on_event("shutdown")
+async def shutdown() -> None:
     try:
         await Tortoise.close_connections()
+        logging.info("ORM connections closed successfully.")
     except Exception as e:
         logging.error(f"Failed to close ORM connections: {e}")
 
@@ -45,10 +44,10 @@ async def create_task(background_tasks: BackgroundTasks, payload: Dict[str, Any]
 
     Args:
         background_tasks (BackgroundTasks): The FastAPI background task manager.
-        payload (dict): A dictionary containing "task_name" and "parameters".
+        payload (Dict): A dictionary containing "task_name" and "parameters".
 
     Returns:
-        dict: A dictionary containing the UUID of the created task.
+        Dict: A dictionary containing the UUID of the created task.
     """
     try:
         task_name = payload.get("task_name")
@@ -64,7 +63,7 @@ async def create_task(background_tasks: BackgroundTasks, payload: Dict[str, Any]
         raise HTTPException(status_code=500, detail="Task creation failed")
 
 
-class TaskResultResponse(TypedDict):
+class TaskResultResponse(BaseModel):
     task_id: str
     task_name: str
     parameters: dict
@@ -80,16 +79,16 @@ async def get_task_result(task_id: str) -> TaskResultResponse:
         task_id (str): The UUID of the task.
 
     Returns:
-        TaskResultResponse: A dictionary containing the task result and metadata.
+        TaskResultResponse: The task result and metadata.
     """
     task_result = await TaskResult.filter(task_id=task_id).first()
     if not task_result:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    return {
-        "task_id": task_id,
-        "task_name": task_result.task_name,
-        "parameters": task_result.parameters,
-        "result": task_result.result,
-        "timestamp": task_result.timestamp
-    }
+    return TaskResultResponse(
+        task_id=task_id,
+        task_name=task_result.task_name,
+        parameters=task_result.parameters,
+        result=task_result.result,
+        timestamp=task_result.timestamp
+    )
