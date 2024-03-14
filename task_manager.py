@@ -17,15 +17,13 @@ TASKS: Dict[str, Callable] = {
 }
 
 
-async def execute_task(task_id: str, task_name: str, parameters: Dict[str, Any]) -> None:
+async def execute_task(task_id: str, task_name: str, parameters: Dict[str, Any]) -> Any:
     """Executes the given task based on the task name and parameters."""
     try:
         if task_name in TASKS:
             # Retrieve the function based on task name and execute it with provided parameters
             func = TASKS[task_name]
-            result = func(**parameters)
-            await create_or_update_task(task_id=task_id, task_name=task_name, parameters=parameters, result=result,
-                                        state=DONE)
+            return func(**parameters)
         else:
             logging.error(f"Unsupported task: {task_name}")
     except Exception as e:
