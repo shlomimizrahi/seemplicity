@@ -21,8 +21,8 @@ Each task is processed asynchronously, and results are stored in a database with
 Clone the repository:
 
 ```bash
-git clone https://yourrepository.com/tasker.git
-cd tasker
+git clone git@github.com:shlomimizrahi/seemplicity.git
+cd seemplicity
 ```
 
 Install dependencies using Pipenv:
@@ -83,6 +83,7 @@ directory.
 To run tests, execute:
 
 ```bash
+cd /tests
 pytest
 ```
 
@@ -93,7 +94,7 @@ To build and run the application using Docker:
 #### Build the image:
 
 ```bash
-docker build -t tasker-api .
+docker build -t .
 ```
 
 #### Run the container:
@@ -102,6 +103,3 @@ docker run -p 8000:8000 tasker-api
 ```
 
 This will expose the API on port 8000 of your machine.
-
-
-
