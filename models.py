@@ -8,5 +8,7 @@ class TaskResult(models.Model):
     task_id = fields.TextField(pk=True)
     task_name = fields.TextField()
     parameters = fields.JSONField()
-    result = fields.TextField()
+    result = fields.TextField(null=True)
     timestamp = fields.DatetimeField(auto_now_add=True)
+    state = fields.TextField()
+    client_address = fields.TextField()
